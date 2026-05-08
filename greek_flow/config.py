@@ -3,8 +3,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-TASTYTRADE_USERNAME = os.environ["TASTYTRADE_USERNAME"]
-TASTYTRADE_PASSWORD = os.environ["TASTYTRADE_PASSWORD"]
+
+def _require_env(name: str) -> str:
+    value = os.environ.get(name)
+    if not value:
+        raise RuntimeError(f"Required environment variable '{name}' is not set. Check your .env file.")
+    return value
+
+
+TASTYTRADE_USERNAME = _require_env("TASTYTRADE_USERNAME")
+TASTYTRADE_PASSWORD = _require_env("TASTYTRADE_PASSWORD")
 
 # Symbols
 SPX_SYMBOL = "SPX"       # for ES bias

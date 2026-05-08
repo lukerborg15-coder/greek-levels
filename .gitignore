@@ -1,0 +1,7 @@
+.env
+*.env
+greek_flow/output/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
