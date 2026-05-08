@@ -7,13 +7,14 @@ def calculate_gex(chain: list[dict], spot_price: float, contract_multiplier: int
 
     for record in chain:
         strike = record["strike_price"]
+        # Tastytrade always returns positive gamma for both calls and puts
         gex = record["gamma"] * record["open_interest"] * contract_multiplier * spot_price
         if record["option_type"] == "C":
             calls_by_strike[strike] += gex
         else:
             puts_by_strike[strike] += gex
 
-    all_strikes = sorted(set(list(calls_by_strike.keys()) + list(puts_by_strike.keys())))
+    all_strikes = sorted(calls_by_strike.keys() | puts_by_strike.keys())
     by_strike = {s: calls_by_strike[s] - puts_by_strike[s] for s in all_strikes}
     aggregate = sum(by_strike.values())
     regime = "positive" if aggregate >= 0 else "negative"
