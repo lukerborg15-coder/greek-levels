@@ -52,7 +52,11 @@ def fetch_chain(symbol: str, session_token: str) -> list[dict]:
     records = []
     exp_date_str = front_month.get("expiration-date", "")
     for strike in front_month.get("strikes", []):
-        strike_price = float(strike.get("strike-price", 0))
+        try:
+            strike_price = float(strike["strike-price"])
+        except (KeyError, TypeError, ValueError):
+            print(f"Warning: skipping strike row for {symbol} {exp_date_str} — missing strike-price", file=sys.stderr)
+            continue
         for opt_type, key in [("C", "call"), ("P", "put")]:
             opt = strike.get(key, {})
             if opt is None:
@@ -61,10 +65,10 @@ def fetch_chain(symbol: str, session_token: str) -> list[dict]:
                 delta = float(opt["delta"])
                 gamma = float(opt["gamma"])
                 vanna = float(opt["vanna"])
-                oi = int(opt.get("open-interest", 0))
+                oi = int(opt["open-interest"])
             except (KeyError, TypeError, ValueError):
                 print(
-                    f"Warning: skipping {symbol} {exp_date_str} {strike_price} {opt_type} — missing greeks",
+                    f"Warning: skipping {symbol} {exp_date_str} {strike_price} {opt_type} — missing greeks or open-interest",
                     file=sys.stderr,
                 )
                 continue
