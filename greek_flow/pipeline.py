@@ -1,7 +1,5 @@
-import os
 import sys
 import requests
-from dotenv import load_dotenv
 
 from greek_flow import config
 from greek_flow.auth import get_session_token
@@ -9,7 +7,7 @@ from greek_flow.chain import fetch_chain
 from greek_flow.greeks import calculate_gex, calculate_dex, calculate_vanna
 from greek_flow.output import build_level_map, print_level_map, save_level_map
 
-BASE_URL = os.environ.get("TASTYTRADE_BASE_URL", "https://api.tastytrade.com")
+BASE_URL = "https://api.tastytrade.com"
 
 
 def get_spot_price(symbol: str, session_token: str) -> float:
@@ -26,16 +24,18 @@ def get_spot_price(symbol: str, session_token: str) -> float:
     except ValueError as exc:
         raise RuntimeError(f"Non-JSON response fetching quote for {symbol}: {response.text}") from exc
 
-    items = data.get("data", {}).get("items", [])
-    if not items:
-        raise RuntimeError(f"No quote data returned for {symbol}")
-    last = items[0].get("last")
+    quote_data = data.get("data", {})
+    last = quote_data.get("last")
     if last is None:
-        raise RuntimeError(f"Quote for {symbol} missing 'last' price field")
+        items = quote_data.get("items", [])
+        if items:
+            last = items[0].get("last")
+    if last is None:
+        raise RuntimeError(f"Quote for {symbol} missing 'last' price field in response: {data}")
     return float(last)
 
 
-def run(symbols: list[str] = ["SPX", "NDX"]) -> None:
+def run(symbols: list[str] | None = None) -> None:
     """
     Full pipeline:
     1. Load config
@@ -43,6 +43,9 @@ def run(symbols: list[str] = ["SPX", "NDX"]) -> None:
     3. For each symbol: fetch chain, get spot price, calculate greeks, build level map, print output
     4. Save JSON output
     """
+    if symbols is None:
+        symbols = [config.SPX_SYMBOL, config.NDX_SYMBOL]
+
     print("Authenticating with Tastytrade...", file=sys.stderr)
     session_token = get_session_token(config.TASTYTRADE_USERNAME, config.TASTYTRADE_PASSWORD)
 
