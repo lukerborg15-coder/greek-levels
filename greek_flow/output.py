@@ -14,10 +14,16 @@ def build_level_map(gex: dict, dex: dict, vanna: dict, spot_price: float, top_n:
     # Daily bias from DEX only
     if dex_bias == "neutral":
         daily_bias = "neutral"
-    elif dex_bias == "bullish":
+    elif regime == "positive" and dex_bias == "bullish":
         daily_bias = "long"
-    else:
+    elif regime == "positive" and dex_bias == "bearish":
         daily_bias = "short"
+    elif regime == "negative" and dex_bias == "bullish":
+        daily_bias = "long"
+    elif regime == "negative" and dex_bias == "bearish":
+        daily_bias = "short"
+    else:
+        daily_bias = "neutral"
 
     # Conviction from vanna alignment
     if daily_bias == "neutral":

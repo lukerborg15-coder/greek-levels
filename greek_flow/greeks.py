@@ -68,7 +68,7 @@ def calculate_vanna(chain: list[dict], contract_multiplier: int) -> dict:
         note = "Vanna flow is neutral — IV changes will have limited directional impact"
     elif aggregate > 0:
         flow_direction = "bullish"
-        note = "Positive vanna flow — IV compression adds buying pressure"
+        note = "Positive vanna flow — IV compression adds bid"
     else:
         flow_direction = "bearish"
         note = "Negative vanna flow — IV compression adds selling pressure"
