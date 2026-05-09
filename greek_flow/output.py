@@ -111,29 +111,37 @@ def print_level_map(symbol: str, level_map: dict) -> None:
     print()
 
     print("RESISTANCE LEVELS (above spot):")
-    for lvl in level_map["resistance_levels"]:
-        print(f"  {lvl['strike']:>9,.2f}  |  GEX: {_format_gex(lvl['gex'])}")
+    if level_map["resistance_levels"]:
+        for lvl in level_map["resistance_levels"]:
+            print(f"  {lvl['strike']:>9,.2f}  |  GEX: {_format_gex(lvl['gex'])}")
+    else:
+        print("  None")
     print()
 
     print("SUPPORT LEVELS (below spot):")
-    for lvl in level_map["support_levels"]:
-        print(f"  {lvl['strike']:>9,.2f}  |  GEX: {_format_gex(lvl['gex'])}")
+    if level_map["support_levels"]:
+        for lvl in level_map["support_levels"]:
+            print(f"  {lvl['strike']:>9,.2f}  |  GEX: {_format_gex(lvl['gex'])}")
+    else:
+        print("  None")
     print()
 
     print("NEGATIVE GEX ZONES (acceleration zones):")
-    for lvl in level_map["negative_gex_zones"]:
-        print(f"  {lvl['strike']:>9,.2f}  |  GEX: {_format_gex(lvl['gex'])}")
+    if level_map["negative_gex_zones"]:
+        for lvl in level_map["negative_gex_zones"]:
+            print(f"  {lvl['strike']:>9,.2f}  |  GEX: {_format_gex(lvl['gex'])}")
+    else:
+        print("  None")
     print()
 
     dex_sign = "bullish" if level_map["aggregate_dex"] >= 0 else "bearish"
     print(f"DEX Aggregate:   {level_map['aggregate_dex']:>+,.0f} ({dex_sign})")
-    print(f"Vanna Flow:      {level_map['vanna_flow'].upper()} ({level_map['vanna_note'].split(' — ')[1] if ' — ' in level_map['vanna_note'] else level_map['vanna_note']})")
+    vanna_note_short = level_map['vanna_note'].split(' — ')[1] if ' — ' in level_map['vanna_note'] else level_map['vanna_note']
+    print(f"Vanna Flow:      {level_map['vanna_flow'].upper()} ({vanna_note_short})")
     print(sep)
 
 
 def save_level_map(level_map: dict, path: str) -> None:
-    dir_path = os.path.dirname(path)
-    if dir_path:
-        os.makedirs(dir_path, exist_ok=True)
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(level_map, f, indent=2)
