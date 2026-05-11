@@ -29,13 +29,9 @@ TOP_N_LEVELS = 5
 STRIKE_RANGE_PCT = 0.15
 
 # Display scale factor per symbol — multiplies strike prices and spot price in
-# the output ONLY. Used to translate QQQ levels into NQ/NDX-equivalent strikes
-# so you can map them to your NQ futures chart. GEX values are NOT scaled because
-# they represent real dollar gamma exposure on the underlying being traded.
-# NDX/QQQ ratio is roughly 41-42; tweak if it drifts.
-DISPLAY_SCALE = {
-    "QQQ": 41.5,
-}
+# the output ONLY. Useful if you want to translate one symbol's strikes into
+# another scale (e.g. QQQ → NDX). Empty by default; raw strikes are shown.
+DISPLAY_SCALE: dict[str, float] = {}
 
 # How long (seconds) to collect streaming greeks/summary events before stopping
 STREAM_COLLECT_SECONDS = 15.0
