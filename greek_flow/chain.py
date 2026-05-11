@@ -66,7 +66,7 @@ async def fetch_chain_with_greeks(
     Filters strikes to within +/- strike_range points of spot_price to keep the
     subscription set manageable. Returns a flat list of dict records.
     """
-    chains = await NestedOptionChain.a_get(session, symbol)
+    chains = NestedOptionChain.get(session, symbol)
     if not chains:
         raise RuntimeError(f"No option chain returned for {symbol}")
     chain = chains[0]
