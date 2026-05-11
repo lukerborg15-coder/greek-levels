@@ -34,9 +34,21 @@ def fetch_chain(symbol: str, access_token: str) -> list[dict]:
     items = data.get("data", {}).get("items", [])
     today = date.today()
 
+    # The /nested endpoint nests expirations inside each underlying-symbol item.
+    # Flatten all expirations across items.
+    all_expirations = []
+    for item in items:
+        all_expirations.extend(item.get("expirations", []))
+
+    if not all_expirations:
+        raise RuntimeError(
+            f"No expirations found in chain response for {symbol}. "
+            f"Top-level keys: {list(data.keys())}; data keys: {list(data.get('data', {}).keys())}"
+        )
+
     # Find front-month: earliest expiration with at least 1 day to expiry
     front_month = None
-    for item in sorted(items, key=lambda x: x.get("expiration-date", "")):
+    for item in sorted(all_expirations, key=lambda x: x.get("expiration-date", "")):
         exp_str = item.get("expiration-date", "")
         try:
             exp_date = datetime.strptime(exp_str, "%Y-%m-%d").date()
