@@ -16,28 +16,34 @@ async def _run_async(symbols: list[str]) -> None:
 
     for symbol in symbols:
         print(f"\nProcessing {symbol}...", file=sys.stderr)
+        try:
+            print(f"  Fetching spot price for {symbol}...", file=sys.stderr)
+            spot_price = await get_spot_price(session, symbol)
+            print(f"  Spot price: {spot_price:.2f}", file=sys.stderr)
 
-        print(f"  Fetching spot price for {symbol}...", file=sys.stderr)
-        spot_price = await get_spot_price(session, symbol)
-        print(f"  Spot price: {spot_price:.2f}", file=sys.stderr)
+            chain = await fetch_chain_with_greeks(
+                session,
+                symbol,
+                spot_price,
+                strike_range=config.STRIKE_RANGE_POINTS,
+                collect_seconds=config.STREAM_COLLECT_SECONDS,
+            )
 
-        chain = await fetch_chain_with_greeks(
-            session,
-            symbol,
-            spot_price,
-            strike_range=config.STRIKE_RANGE_POINTS,
-            collect_seconds=config.STREAM_COLLECT_SECONDS,
-        )
+            gex = calculate_gex(chain, spot_price, config.CONTRACT_MULTIPLIER)
+            dex = calculate_dex(chain, config.CONTRACT_MULTIPLIER)
+            vanna = calculate_vanna(chain, config.CONTRACT_MULTIPLIER)
 
-        gex = calculate_gex(chain, spot_price, config.CONTRACT_MULTIPLIER)
-        dex = calculate_dex(chain, config.CONTRACT_MULTIPLIER)
-        vanna = calculate_vanna(chain, config.CONTRACT_MULTIPLIER)
+            level_map = build_level_map(gex, dex, vanna, spot_price, config.TOP_N_LEVELS)
+            print()
+            print_level_map(symbol, level_map)
 
-        level_map = build_level_map(gex, dex, vanna, spot_price, config.TOP_N_LEVELS)
-        print()
-        print_level_map(symbol, level_map)
-
-        all_level_maps[symbol] = level_map
+            all_level_maps[symbol] = level_map
+        except Exception as exc:
+            print(
+                f"  ! Failed to process {symbol}: {exc}\n"
+                f"    (skipping {symbol}; may need a different data subscription or symbol format)",
+                file=sys.stderr,
+            )
 
     save_level_map(all_level_maps, config.OUTPUT_JSON_PATH)
     print(f"\nLevel maps saved to {config.OUTPUT_JSON_PATH}", file=sys.stderr)
