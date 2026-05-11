@@ -2,7 +2,7 @@ import sys
 import requests
 
 from greek_flow import config
-from greek_flow.auth import get_session_token
+from greek_flow.auth import get_access_token
 from greek_flow.chain import fetch_chain
 from greek_flow.greeks import calculate_gex, calculate_dex, calculate_vanna
 from greek_flow.output import build_level_map, print_level_map, save_level_map
@@ -10,10 +10,10 @@ from greek_flow.output import build_level_map, print_level_map, save_level_map
 BASE_URL = "https://api.tastytrade.com"
 
 
-def get_spot_price(symbol: str, session_token: str) -> float:
+def get_spot_price(symbol: str, access_token: str) -> float:
     """Fetch current spot price for symbol from Tastytrade quote endpoint."""
     url = f"{BASE_URL}/quotes/{symbol}"
-    headers = {"Authorization": session_token}
+    headers = {"Authorization": f"Bearer {access_token}"}
     response = requests.get(url, headers=headers, timeout=10)
     if not response.ok:
         raise RuntimeError(
@@ -46,16 +46,16 @@ def run(symbols: list[str] | None = None) -> None:
     if symbols is None:
         symbols = [config.SPX_SYMBOL, config.NDX_SYMBOL]
 
-    print("Authenticating with Tastytrade...", file=sys.stderr)
-    session_token = get_session_token(config.TASTYTRADE_USERNAME, config.TASTYTRADE_PASSWORD)
+    print("Authenticating with Tastytrade (OAuth2)...", file=sys.stderr)
+    access_token = get_access_token(config.TASTYTRADE_CLIENT_SECRET, config.TASTYTRADE_REFRESH_TOKEN)
 
     all_level_maps = {}
 
     for symbol in symbols:
         print(f"Processing {symbol}...", file=sys.stderr)
 
-        chain = fetch_chain(symbol, session_token)
-        spot_price = get_spot_price(symbol, session_token)
+        chain = fetch_chain(symbol, access_token)
+        spot_price = get_spot_price(symbol, access_token)
 
         gex = calculate_gex(chain, spot_price, config.CONTRACT_MULTIPLIER)
         dex = calculate_dex(chain, config.CONTRACT_MULTIPLIER)

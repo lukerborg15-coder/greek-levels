@@ -11,8 +11,8 @@ def _require_env(name: str) -> str:
     return value
 
 
-TASTYTRADE_USERNAME = _require_env("TASTYTRADE_USERNAME")
-TASTYTRADE_PASSWORD = _require_env("TASTYTRADE_PASSWORD")
+TASTYTRADE_CLIENT_SECRET = _require_env("TASTYTRADE_CLIENT_SECRET")
+TASTYTRADE_REFRESH_TOKEN = _require_env("TASTYTRADE_REFRESH_TOKEN")
 
 # Symbols
 SPX_SYMBOL = "SPX"       # for ES bias

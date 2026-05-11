@@ -6,7 +6,7 @@ import requests
 BASE_URL = os.environ.get("TASTYTRADE_BASE_URL", "https://api.tastytrade.com")
 
 
-def fetch_chain(symbol: str, session_token: str) -> list[dict]:
+def fetch_chain(symbol: str, access_token: str) -> list[dict]:
     """
     Fetch full options chain for symbol.
     Returns a flat list of option records, each containing:
@@ -20,7 +20,7 @@ def fetch_chain(symbol: str, session_token: str) -> list[dict]:
     Raise RuntimeError on API failure.
     """
     url = f"{BASE_URL}/option-chains/{symbol}/nested"
-    headers = {"Authorization": session_token}
+    headers = {"Authorization": f"Bearer {access_token}"}
     response = requests.get(url, headers=headers, timeout=15)
     if not response.ok:
         raise RuntimeError(
