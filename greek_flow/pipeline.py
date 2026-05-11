@@ -25,7 +25,7 @@ async def _run_async(symbols: list[str]) -> None:
                 session,
                 symbol,
                 spot_price,
-                strike_range=config.STRIKE_RANGE_POINTS,
+                strike_range=spot_price * config.STRIKE_RANGE_PCT,
                 collect_seconds=config.STREAM_COLLECT_SECONDS,
             )
 

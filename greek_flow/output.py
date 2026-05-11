@@ -81,7 +81,7 @@ def _format_gex(value: float) -> str:
 def _symbol_suffix(symbol: str) -> str:
     if symbol.upper() == "SPX":
         return "for ES"
-    elif symbol.upper() == "NDX":
+    elif symbol.upper() in ("NDX", "QQQ"):
         return "for NQ"
     return symbol
 

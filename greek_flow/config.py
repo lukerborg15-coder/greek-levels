@@ -16,7 +16,7 @@ TASTYTRADE_REFRESH_TOKEN = _require_env("TASTYTRADE_REFRESH_TOKEN")
 
 # Symbols
 SPX_SYMBOL = "SPX"       # for ES bias
-NDX_SYMBOL = "NDX"       # for NQ bias
+NDX_SYMBOL = "QQQ"       # for NQ bias (QQQ tracks NDX, has free market data on Tastytrade)
 
 # Contract multiplier for index options
 CONTRACT_MULTIPLIER = 100
@@ -24,8 +24,9 @@ CONTRACT_MULTIPLIER = 100
 # GEX levels to output (top N positive and negative)
 TOP_N_LEVELS = 5
 
-# Filter chain to strikes within +/- N points of spot (keeps streaming load small)
-STRIKE_RANGE_POINTS = 1000
+# Filter chain to strikes within +/- this fraction of spot (e.g. 0.15 = +/-15%).
+# Percentage-based so the same value works for SPX (~7400) and QQQ (~600).
+STRIKE_RANGE_PCT = 0.15
 
 # How long (seconds) to collect streaming greeks/summary events before stopping
 STREAM_COLLECT_SECONDS = 15.0
