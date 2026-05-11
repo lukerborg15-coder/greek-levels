@@ -33,6 +33,20 @@ STRIKE_RANGE_PCT = 0.15
 # another scale (e.g. QQQ → NDX). Empty by default; raw strikes are shown.
 DISPLAY_SCALE: dict[str, float] = {}
 
+# Zone width to display next to each level (e.g. "7,400.00 ±5.00"). Each level
+# is really a zone — give it some give when planning entries / stops.
+# Rough trader rules of thumb:
+#   SPX:  ±5 points
+#   NDX:  ±25 points
+#   QQQ:  ±0.50
+# For symbols not listed, falls back to LEVEL_ZONE_DEFAULT_PCT of strike price.
+LEVEL_ZONES: dict[str, float] = {
+    "SPX": 5.0,
+    "NDX": 25.0,
+    "QQQ": 0.50,
+}
+LEVEL_ZONE_DEFAULT_PCT = 0.0007  # ~0.07% of strike for unknown symbols
+
 # How long (seconds) to collect streaming greeks/summary events before stopping
 STREAM_COLLECT_SECONDS = 15.0
 

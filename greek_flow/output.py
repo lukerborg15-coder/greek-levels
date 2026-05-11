@@ -86,8 +86,16 @@ def _symbol_suffix(symbol: str) -> str:
     return symbol
 
 
+def _format_strike_with_zone(strike: float, zone: float | None) -> str:
+    """Format a strike like '7,400.00 ±5.00', or just '7,400.00' if zone is None."""
+    if zone is None or zone <= 0:
+        return f"{strike:>9,.2f}"
+    return f"{strike:>9,.2f} ±{zone:,.2f}"
+
+
 def print_level_map(symbol: str, level_map: dict) -> None:
     sep = "=" * 50
+    zone = level_map.get("level_zone")
     print(sep)
     print(f"GREEK FLOW LEVELS — {symbol.upper()} ({_symbol_suffix(symbol)})")
     print(sep)
@@ -112,14 +120,17 @@ def print_level_map(symbol: str, level_map: dict) -> None:
     print()
 
     flip = level_map["gex_flip_point"]
-    flip_str = f"{flip:,.2f}" if flip is not None else "None"
+    if flip is not None:
+        flip_str = _format_strike_with_zone(flip, zone).strip()
+    else:
+        flip_str = "None"
     print(f"GEX Flip Point:  {flip_str}")
     print()
 
     print("RESISTANCE LEVELS (above spot):")
     if level_map["resistance_levels"]:
         for lvl in level_map["resistance_levels"]:
-            print(f"  {lvl['strike']:>9,.2f}  |  GEX: {_format_gex(lvl['gex'])}")
+            print(f"  {_format_strike_with_zone(lvl['strike'], zone)}  |  GEX: {_format_gex(lvl['gex'])}")
     else:
         print("  None")
     print()
@@ -127,7 +138,7 @@ def print_level_map(symbol: str, level_map: dict) -> None:
     print("SUPPORT LEVELS (below spot):")
     if level_map["support_levels"]:
         for lvl in level_map["support_levels"]:
-            print(f"  {lvl['strike']:>9,.2f}  |  GEX: {_format_gex(lvl['gex'])}")
+            print(f"  {_format_strike_with_zone(lvl['strike'], zone)}  |  GEX: {_format_gex(lvl['gex'])}")
     else:
         print("  None")
     print()
@@ -135,7 +146,7 @@ def print_level_map(symbol: str, level_map: dict) -> None:
     print("NEGATIVE GEX ZONES (acceleration zones):")
     if level_map["negative_gex_zones"]:
         for lvl in level_map["negative_gex_zones"]:
-            print(f"  {lvl['strike']:>9,.2f}  |  GEX: {_format_gex(lvl['gex'])}")
+            print(f"  {_format_strike_with_zone(lvl['strike'], zone)}  |  GEX: {_format_gex(lvl['gex'])}")
     else:
         print("  None")
     print()

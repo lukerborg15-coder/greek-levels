@@ -51,6 +51,12 @@ async def _run_async(symbols: list[str]) -> None:
             if scale != 1.0:
                 level_map = _scale_level_map(level_map, scale)
 
+            # Attach the per-symbol level zone width so output can display "±X"
+            zone = config.LEVEL_ZONES.get(symbol.upper())
+            if zone is None:
+                zone = spot_price * config.LEVEL_ZONE_DEFAULT_PCT
+            level_map["level_zone"] = zone * scale  # match the scaled prices
+
             print()
             print_level_map(symbol, level_map)
 
