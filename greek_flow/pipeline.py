@@ -8,6 +8,17 @@ from greek_flow.greeks import calculate_gex, calculate_dex, calculate_vanna
 from greek_flow.output import build_level_map, print_level_map, save_level_map
 
 
+def _scale_level_map(level_map: dict, scale: float) -> dict:
+    """Multiply strike-price fields by scale; leave GEX/DEX values untouched."""
+    scaled = dict(level_map)
+    scaled["spot_price"] = level_map["spot_price"] * scale
+    if level_map["gex_flip_point"] is not None:
+        scaled["gex_flip_point"] = level_map["gex_flip_point"] * scale
+    for key in ("resistance_levels", "support_levels", "negative_gex_zones"):
+        scaled[key] = [{"strike": lvl["strike"] * scale, "gex": lvl["gex"]} for lvl in level_map[key]]
+    return scaled
+
+
 async def _run_async(symbols: list[str]) -> None:
     print("Authenticating with Tastytrade (OAuth2)...", file=sys.stderr)
     session = create_session(config.TASTYTRADE_CLIENT_SECRET, config.TASTYTRADE_REFRESH_TOKEN)
@@ -34,6 +45,12 @@ async def _run_async(symbols: list[str]) -> None:
             vanna = calculate_vanna(chain, config.CONTRACT_MULTIPLIER)
 
             level_map = build_level_map(gex, dex, vanna, spot_price, config.TOP_N_LEVELS)
+
+            # Apply display scale (e.g. QQQ strikes -> NQ-equivalent prices)
+            scale = config.DISPLAY_SCALE.get(symbol.upper(), 1.0)
+            if scale != 1.0:
+                level_map = _scale_level_map(level_map, scale)
+
             print()
             print_level_map(symbol, level_map)
 
