@@ -73,9 +73,22 @@ greek_flow/
 └── tv_export.py  Pine Script generation
 ```
 
+`greek_levels.pine` in the repo root is **generated output**, not hand-written source — it's a committed sample of what `tv_export.py` produces, checked in so you can see the result without running the pipeline. It gets overwritten on each run.
+
 ## Configuration
 
 Per-symbol settings live in `config.py`: strike range as a percentage of spot, zone width, contract multiplier, and dividend yield. Symbol failures are non-fatal — missing data on one symbol won't kill the run.
+
+## How this was built
+
+This project was built with AI assistance, and the two prompt files in the repo root are the record of that:
+
+- **`GEX_PIPELINE_BUILDER_PROMPT.md`** — the spec I wrote to generate the first implementation: data sources, the GEX math, the auth flow, module boundaries, and a checklist of what "done" meant.
+- **`GEX_PIPELINE_AUDITOR_PROMPT.md`** — an adversarial review pass run against the result, checking for hardcoded credentials, wrong API method names, sign errors in the gamma aggregation, and spec drift.
+
+They're committed deliberately rather than deleted. The interesting part of the work is the specification and the audit — knowing what GEX is, how dealer hedging flows actually work, which parts of the output are assumptions, and what an auditor should go looking for. The prompts show that reasoning; the code is what fell out of it.
+
+Everything here has been read, run against live data, and corrected by hand where the generated version was wrong — the commit history has the fixes (async method names, vanna derivation, per-symbol failure handling).
 
 ## Notes
 
