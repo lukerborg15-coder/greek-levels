@@ -1,0 +1,234 @@
+//@version=5
+indicator("Greek Flow Levels — ES / NQ", shorttitle="GFL", overlay=true,
+     max_lines_count=100, max_labels_count=100, max_boxes_count=100)
+
+// =====================================================================
+// HOW TO USE
+// =====================================================================
+// 1) Morning, run:    python -m greek_flow.pipeline
+// 2) Then run:        python -m greek_flow.tv_export
+// 3) Copy each blob into the matching field below.
+// 4) Pick instrument (ES or NQ). Set basis offset. Done.
+// =====================================================================
+
+instrument = input.string("NQ", "Instrument", options=["ES", "NQ"], group="Setup")
+basisES    = input.float(0.0, "ES basis (ES − SPX)", step=0.25, group="Setup",
+     tooltip="Check ES − SPX at open and enter it. Levels shift up by this amount.")
+basisNQ    = input.float(0.0, "NQ basis (NQ − NDX)", step=0.25, group="Setup",
+     tooltip="Check NQ − NDX at open and enter it. Levels shift up by this amount.")
+zoneES     = input.float(2.5,  "ES zone width (±pts)", step=0.25, group="Setup")
+zoneNQ     = input.float(10.0, "NQ zone width (±pts)", step=0.25, group="Setup")
+showZones    = input.bool(true,  "Draw zone bands (boxes)", group="Setup")
+zoneOpacity  = input.int(75, "Zone opacity (0=solid, 100=invisible)", minval=0, maxval=100, group="Setup")
+showMidline  = input.bool(false, "Show thin midline through zone", group="Setup")
+showLabels   = input.bool(true,  "Show labels",     group="Setup")
+labelOff     = input.int(15, "Label offset (bars right)", minval=1, group="Setup")
+showHUD      = input.bool(true,  "Show metrics HUD", group="Setup")
+showSpot     = input.bool(true,  "Show spot line",   group="Setup")
+
+esBlob = input.text_area(
+     defval = "spot=0;regime=;bias=;conv=;flip=;dex=0;dexbias=;vanna=;vnote=;R=;Rgex=;S=;Sgex=;N=;Ngex=",
+     title  = "ES paste blob",
+     group  = "Paste — ES",
+     tooltip= "Paste the ES blob printed by tv_export.py")
+
+nqBlob = input.text_area(
+     defval = "spot=0;regime=;bias=;conv=;flip=;dex=0;dexbias=;vanna=;vnote=;R=;Rgex=;S=;Sgex=;N=;Ngex=",
+     title  = "NQ paste blob",
+     group  = "Paste — NQ",
+     tooltip= "Paste the NQ blob printed by tv_export.py")
+
+cRes   = input.color(color.new(color.red,    0),  "Resistance",  group="Style")
+cSup   = input.color(color.new(color.green,  0),  "Support",     group="Style")
+cAccel = input.color(color.new(color.orange, 0),  "Accel (neg)", group="Style")
+cFlip  = input.color(color.new(color.yellow, 0),  "Flip point",  group="Style")
+cSpot  = input.color(color.new(color.aqua,   0),  "Spot",        group="Style")
+
+// =====================================================================
+// PARSER
+// =====================================================================
+
+getField(string blob, string key) =>
+    string out = ""
+    parts = str.split(blob, ";")
+    for i = 0 to array.size(parts) - 1
+        p = array.get(parts, i)
+        eq = str.pos(p, "=")
+        if not na(eq)
+            k = str.substring(p, 0, eq)
+            v = str.substring(p, eq + 1, str.length(p))
+            if k == key
+                out := v
+    out
+
+parseFloats(string s) =>
+    arr = array.new<float>()
+    if s != ""
+        items = str.split(s, ",")
+        for i = 0 to array.size(items) - 1
+            v = str.tonumber(str.trim(array.get(items, i)))
+            if not na(v)
+                array.push(arr, v)
+    arr
+
+parseStrings(string s) =>
+    arr = array.new<string>()
+    if s != ""
+        items = str.split(s, ",")
+        for i = 0 to array.size(items) - 1
+            array.push(arr, str.trim(array.get(items, i)))
+    arr
+
+// =====================================================================
+// PICK ACTIVE BLOB
+// =====================================================================
+isES  = instrument == "ES"
+blob  = isES ? esBlob : nqBlob
+basis = isES ? basisES : basisNQ
+zone  = isES ? zoneES  : zoneNQ
+
+spot       = nz(str.tonumber(getField(blob, "spot")))
+regime     = getField(blob, "regime")
+bias       = getField(blob, "bias")
+conv       = getField(blob, "conv")
+flipStr    = getField(blob, "flip")
+flip       = flipStr == "" ? float(na) : str.tonumber(flipStr)
+dex        = nz(str.tonumber(getField(blob, "dex")))
+dexbias    = getField(blob, "dexbias")
+vanna      = getField(blob, "vanna")
+vnote      = getField(blob, "vnote")
+
+rArr   = parseFloats(getField(blob, "R"))
+rGex   = parseStrings(getField(blob, "Rgex"))
+sArr   = parseFloats(getField(blob, "S"))
+sGex   = parseStrings(getField(blob, "Sgex"))
+nArr   = parseFloats(getField(blob, "N"))
+nGex   = parseStrings(getField(blob, "Ngex"))
+
+// =====================================================================
+// DRAW
+// =====================================================================
+var line[]  lines  = array.new<line>()
+var box[]   boxes  = array.new<box>()
+var label[] labels = array.new<label>()
+
+clearAll() =>
+    while array.size(lines)  > 0
+        line.delete(array.shift(lines))
+    while array.size(boxes)  > 0
+        box.delete(array.shift(boxes))
+    while array.size(labels) > 0
+        label.delete(array.shift(labels))
+
+drawLevel(float raw, color col, string tag, string gexStr, bool asLine) =>
+    if not na(raw) and raw > 0
+        price = raw + basis
+        x1 = bar_index - 500
+        x2 = bar_index + labelOff
+        if asLine
+            // Spot / Flip: single solid line, no zone
+            ln = line.new(x1, price, x2, price, color=col, width=2, extend=extend.none)
+            array.push(lines, ln)
+        else
+            // R / S / Accel: zone box colored by level type
+            if showZones and zone > 0
+                zoneCol = color.new(col, zoneOpacity)
+                bx = box.new(x1, price + zone, x2, price - zone,
+                     border_color=color.new(col, 50), border_width=1, bgcolor=zoneCol)
+                array.push(boxes, bx)
+            else
+                ln = line.new(x1, price, x2, price, color=col, width=2, extend=extend.none)
+                array.push(lines, ln)
+            if showZones and showMidline
+                mid = line.new(x1, price, x2, price,
+                     color=color.new(col, 30), width=1, style=line.style_dashed)
+                array.push(lines, mid)
+        if showLabels
+            txt = gexStr == "" ? str.format("{0}  {1,number,#.##}", tag, price)
+                 : str.format("{0}  {1,number,#.##}  ({2})", tag, price, gexStr)
+            lb = label.new(bar_index + labelOff, price, txt,
+                 style=label.style_label_left, color=color.new(col, 80),
+                 textcolor=col, size=size.small)
+            array.push(labels, lb)
+
+getStr(array<string> arr, int i) =>
+    i < array.size(arr) ? array.get(arr, i) : ""
+
+if barstate.islast
+    clearAll()
+    // R and S levels: color dynamically based on close vs level price
+    // close above level = support (green), close below = resistance (red)
+    allLevels  = array.concat(array.copy(rArr), array.copy(sArr))
+    allGex     = array.concat(array.copy(rGex),  array.copy(sGex))
+    allRSize   = array.size(rArr)
+    for i = 0 to array.size(allLevels) - 1
+        lvlPrice = array.get(allLevels, i) + basis
+        dynCol   = close >= lvlPrice ? cSup : cRes
+        prefix   = close >= lvlPrice ? "S" : "R"
+        drawLevel(array.get(allLevels, i), dynCol, prefix + str.tostring(i + 1), getStr(allGex, i), false)
+    // accel (zones — always orange, negative GEX never flips)
+    for i = 0 to array.size(nArr) - 1
+        drawLevel(array.get(nArr, i), cAccel, "N" + str.tostring(i + 1), getStr(nGex, i), false)
+    // flip (line — always yellow)
+    drawLevel(flip, cFlip, "FLIP", "", true)
+    // spot reference (line)
+    if showSpot
+        drawLevel(spot, cSpot, "SPOT", str.tostring(spot, "#.##"), true)
+
+// =====================================================================
+// METRICS HUD
+// =====================================================================
+biasColor(string b) =>
+    b == "long"    ? color.lime :
+     b == "short"  ? color.red  :
+     b == "bullish"? color.lime :
+     b == "bearish"? color.red  :
+     color.gray
+
+regimeColor(string r) =>
+    r == "positive" ? color.lime : r == "negative" ? color.orange : color.gray
+
+convColor(string c) =>
+    c == "high" ? color.lime : c == "medium" ? color.yellow : c == "low" ? color.red : color.gray
+
+var table hud = table.new(position.top_right, 2, 11, border_width=1, frame_color=color.gray, frame_width=1)
+
+if barstate.islast and showHUD
+    table.clear(hud, 0, 0, 1, 10)
+    hbg = color.new(color.black, 20)
+    rbg = color.new(color.black, 60)
+    txt = color.white
+
+    table.cell(hud, 0, 0,  "Instrument", text_color=txt, bgcolor=hbg, text_size=size.small)
+    table.cell(hud, 1, 0,  instrument,   text_color=color.yellow, bgcolor=hbg, text_size=size.small)
+
+    table.cell(hud, 0, 1,  "Spot",       text_color=txt, bgcolor=rbg, text_size=size.small)
+    table.cell(hud, 1, 1,  str.tostring(spot, "#,###.##"), text_color=color.aqua, bgcolor=rbg, text_size=size.small)
+
+    table.cell(hud, 0, 2,  "Regime",     text_color=txt, bgcolor=rbg, text_size=size.small)
+    table.cell(hud, 1, 2,  regime,       text_color=regimeColor(regime), bgcolor=rbg, text_size=size.small)
+
+    table.cell(hud, 0, 3,  "Daily Bias", text_color=txt, bgcolor=rbg, text_size=size.small)
+    table.cell(hud, 1, 3,  bias,         text_color=biasColor(bias), bgcolor=rbg, text_size=size.small)
+
+    table.cell(hud, 0, 4,  "Conviction", text_color=txt, bgcolor=rbg, text_size=size.small)
+    table.cell(hud, 1, 4,  conv,         text_color=convColor(conv), bgcolor=rbg, text_size=size.small)
+
+    flipDisp = na(flip) ? "none" : str.tostring(flip + basis, "#,###.##")
+    table.cell(hud, 0, 5,  "Flip Point", text_color=txt, bgcolor=rbg, text_size=size.small)
+    table.cell(hud, 1, 5,  flipDisp,     text_color=color.yellow, bgcolor=rbg, text_size=size.small)
+
+    table.cell(hud, 0, 6,  "DEX Agg",    text_color=txt, bgcolor=rbg, text_size=size.small)
+    table.cell(hud, 1, 6,  str.tostring(dex, "+#,###;-#,###"), text_color=biasColor(dexbias), bgcolor=rbg, text_size=size.small)
+
+    table.cell(hud, 0, 7,  "DEX Bias",   text_color=txt, bgcolor=rbg, text_size=size.small)
+    table.cell(hud, 1, 7,  dexbias,      text_color=biasColor(dexbias), bgcolor=rbg, text_size=size.small)
+
+    table.cell(hud, 0, 8,  "Vanna Flow", text_color=txt, bgcolor=rbg, text_size=size.small)
+    table.cell(hud, 1, 8,  vanna,        text_color=biasColor(vanna), bgcolor=rbg, text_size=size.small)
+
+    table.cell(hud, 0, 9,  "Vanna Note", text_color=txt, bgcolor=rbg, text_size=size.small)
+    table.cell(hud, 1, 9,  vnote,        text_color=color.silver, bgcolor=rbg, text_size=size.small)
+
+    table.cell(hud, 0, 10, "Basis",      text_color=txt, bgcolor=rbg, text_size=size.small)
+    table.cell(hud, 1, 10, str.tostring(basis, "+#.##;-#.##"), text_color=color.silver, bgcolor=rbg, text_size=size.small)

@@ -31,7 +31,7 @@ STRIKE_RANGE_PCT = 0.15
 # Display scale factor per symbol — multiplies strike prices and spot price in
 # the output ONLY. Useful if you want to translate one symbol's strikes into
 # another scale (e.g. QQQ → NDX). Empty by default; raw strikes are shown.
-DISPLAY_SCALE: dict[str, float] = {}
+DISPLAY_SCALE: dict[str, float] = {"QQQ": 41.11}  # QQQ → NDX/NQ scale. Update ratio periodically.
 
 # Zone width to display next to each level (e.g. "7,400.00 ±5.00"). Each level
 # is really a zone — give it some give when planning entries / stops.
